@@ -1,4 +1,4 @@
-CONFIG_LOCALVERSION="-rystX_default_bore_test1"
+CONFIG_LOCALVERSION="fog-snipex@Violence333"
 # === rystX changes ===
 # KernelSU
 CONFIG_KSU=y
