@@ -1,9 +1,48 @@
+name: Find fog-stock_defconfig
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  find-stock:
+    name: Search fog-stock_defconfig
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout Kernel Source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
       - name: Find fog-stock_defconfig References
         run: |
-          echo "Searching for fog-stock_defconfig references..."
+          echo "=========================================="
+          echo "Searching for fog-stock_defconfig"
+          echo "=========================================="
+
+          echo ""
 
           grep -RIn \
             --exclude-dir=.git \
+            --exclude-dir=out \
             "fog-stock_defconfig" \
-            . \
-            || true
+            . || true
+
+          echo ""
+          echo "=========================================="
+          echo "Searching for stock_defconfig"
+          echo "=========================================="
+
+          grep -RIn \
+            --exclude-dir=.git \
+            --exclude-dir=out \
+            "stock_defconfig" \
+            . || true
+
+          echo ""
+          echo "=========================================="
+          echo "Search complete"
+          echo "=========================================="
