@@ -1,4 +1,4 @@
-name: (final2_memk)rystx_default_bore_test3-KSU
+name: (final3)rystx_default_bore_test3-KSU
 on:
   workflow_dispatch:
 
@@ -7,7 +7,7 @@ permissions:
 
 jobs:
   build:
-    name: Build (final2_memk)rystx_default_bore_test3-KSU
+    name: Build (final3)rystx_default_bore_test3-KSU
     runs-on: ubuntu-22.04
     timeout-minutes: 120
 
@@ -20,10 +20,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
-      - name: Set up MemKernel
-        run: |
-          curl -LSs "https://raw.githubusercontent.com/Poko-Apps/MemKernel/main/kernel/setup.sh" | bash -s M fog_snipex
           
 
       # ==========================================
@@ -264,10 +260,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: (final2_memk)rystx_default_bore_test3-KSU
+          name: (final3)rystx_default_bore_test3-KSU
           path: |
             out/arch/arm64/boot/Image.gz
-            out/drivers/memkernel/fog_snipex_memk.ko
           if-no-files-found: warn
 
       # ==========================================
@@ -277,7 +272,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: (final2_memk)rystx_default_bore-KSU-build-info
+          name: (final3)rystx_default_bore-KSU-build-info
           path: |
             out/.config
             out/System.map
