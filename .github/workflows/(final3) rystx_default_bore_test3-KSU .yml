@@ -1,4 +1,4 @@
-name: (final)rystx_default_bore_test2-KSU
+name: (final3)rystx_default_bore_test3-KSU
 on:
   workflow_dispatch:
 
@@ -7,7 +7,7 @@ permissions:
 
 jobs:
   build:
-    name: Build (final)rystx_default_bore_test2-KSU
+    name: Build (final3)rystx_default_bore_test3-KSU
     runs-on: ubuntu-22.04
     timeout-minutes: 120
 
@@ -20,6 +20,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
 
       # ==========================================
       # Install Dependencies
@@ -259,7 +260,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: (final)rystx_default_bore_test2-KSU
+          name: (final3)rystx_default_bore_test3-KSU
           path: |
             out/arch/arm64/boot/Image.gz
           if-no-files-found: warn
@@ -271,7 +272,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rystx_default_bore-KSU-build-info
+          name: (final3_)rystx_default_bore-KSU-build-info
           path: |
             out/.config
             out/System.map
