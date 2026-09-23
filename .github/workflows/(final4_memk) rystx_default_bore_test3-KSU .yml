@@ -1,4 +1,5 @@
-name: (final3)rystx_default_bore_test3-KSU
+name: (final4)rystx_default_bore_test3-KSU
+
 on:
   workflow_dispatch:
 
@@ -7,7 +8,7 @@ permissions:
 
 jobs:
   build:
-    name: Build (final3)rystx_default_bore_test3-KSU
+    name: Build (final4)rystx_default_bore_test3-KSU
     runs-on: ubuntu-22.04
     timeout-minutes: 120
 
@@ -21,12 +22,21 @@ jobs:
         with:
           fetch-depth: 1
 
+      # ==========================================
+      # Set up MemKernel
+      # ==========================================
+      - name: Set up MemKernel
+        run: |
+          set -e
+          curl -LSs "https://raw.githubusercontent.com/Poko-Apps/MemKernel/main/kernel/setup.sh" | bash -s M fog_snipex
 
       # ==========================================
       # Install Dependencies
       # ==========================================
       - name: Install Dependencies
         run: |
+          set -e
+
           sudo apt-get update
 
           sudo apt-get install -y \
@@ -54,6 +64,20 @@ jobs:
             pahole
 
       # ==========================================
+      # Check Runner Resources
+      # ==========================================
+      - name: Check Build Resources
+        run: |
+          echo "======================================"
+          echo "Build Resources"
+          echo "======================================"
+          echo "CPU threads: $(nproc)"
+          echo ""
+          free -h
+          echo ""
+          df -h "$GITHUB_WORKSPACE"
+
+      # ==========================================
       # Download AOSP Clang 23.0.1
       # ==========================================
       - name: Download AOSP Clang 23
@@ -61,7 +85,6 @@ jobs:
           set -e
 
           mkdir -p "$GITHUB_WORKSPACE/toolchains"
-
           cd "$GITHUB_WORKSPACE/toolchains"
 
           echo "Downloading AOSP Clang r614150..."
@@ -75,7 +98,6 @@ jobs:
             clang-r614150
 
           cd clang-r614150
-
           git sparse-checkout set clang-r614150
 
           echo "Clang directory:"
@@ -99,6 +121,7 @@ jobs:
           echo "AOSP Clang Version"
           echo "======================================"
 
+          which clang
           clang --version
           ld.lld --version
 
@@ -122,6 +145,28 @@ jobs:
           find KernelSU/kernel -maxdepth 1 -type f | sort
 
       # ==========================================
+      # Check MemKernel
+      # ==========================================
+      - name: Check MemKernel
+        run: |
+          set -e
+
+          echo "======================================"
+          echo "MemKernel Check"
+          echo "======================================"
+
+          find . -maxdepth 5 -type f \
+            \( -iname "*memkernel*" -o -iname "fog_snipex_memk.ko" \) \
+            -print | sort || true
+
+          echo ""
+          echo "MemKernel config references:"
+          grep -R -n "MEMKERNEL\|memkernel" \
+            --include='Kconfig*' \
+            --include='Makefile*' \
+            drivers 2>/dev/null | head -100 || true
+
+      # ==========================================
       # Check Defconfig
       # ==========================================
       - name: Check fog-perf_defconfig
@@ -135,14 +180,13 @@ jobs:
             exit 1
           fi
 
-          echo "Using defconfig:"
+          echo "Using ONLY:"
           echo "$DEFCONFIG"
 
           echo ""
-          echo "KSU configuration:"
-          grep -n \
-            -E \
-            "CONFIG_KSU|CONFIG_KSU_SUSFS|CONFIG_MODULE" \
+          echo "Defconfig checks:"
+          grep -n -E \
+            "CONFIG_KSU|CONFIG_KSU_SUSFS|CONFIG_MODULE|CONFIG_MODVERSIONS|CONFIG_MODULE_SIG|CONFIG_SCHED_BORE|CONFIG_LTO|CONFIG_THINLTO" \
             "$DEFCONFIG" || true
 
       # ==========================================
@@ -150,16 +194,18 @@ jobs:
       # ==========================================
       - name: Build Kernel
         run: |
+          set -o pipefail
           set -e
 
           export ARCH=arm64
           export SUBARCH=arm64
 
-          export CLANG_DIR="$GITHUB_WORKSPACE/toolchains/clang-r614150"
+          # IMPORTANT:
+          # Use the actual nested AOSP Clang directory.
+          export CLANG_DIR="$GITHUB_WORKSPACE/toolchains/clang-r614150/clang-r614150"
           export PATH="$CLANG_DIR/bin:$PATH"
 
           export LLVM=1
-          export LLVM_IAS=1
 
           export CC=clang
           export LD=ld.lld
@@ -179,7 +225,9 @@ jobs:
           echo "Compiler"
           echo "======================================"
 
+          which clang
           clang --version
+          ld.lld --version
 
           echo ""
           echo "======================================"
@@ -190,7 +238,6 @@ jobs:
             O=out \
             ARCH=arm64 \
             LLVM=1 \
-            LLVM_IAS=1 \
             CC=clang \
             LD=ld.lld \
             CLANG_TRIPLE="$CLANG_TRIPLE" \
@@ -200,25 +247,23 @@ jobs:
 
           echo ""
           echo "======================================"
-          echo "Final KernelSU Config"
+          echo "Final Kernel Config"
           echo "======================================"
 
-          grep -n \
-            -E \
+          grep -n -E \
             "CONFIG_MODULE|CONFIG_KSU|CONFIG_KSU_SUSFS|CONFIG_SCHED_BORE|CONFIG_LTO|CONFIG_LTO_CLANG|CONFIG_THINLTO" \
             out/.config || true
 
           echo ""
           echo "======================================"
-          echo "Building Image.gz"
+          echo "Build vmlinux"
           echo "======================================"
 
           make \
-            -j"$(nproc)" \
+            -j2 \
             O=out \
             ARCH=arm64 \
             LLVM=1 \
-            LLVM_IAS=1 \
             CC=clang \
             LD=ld.lld \
             AR=llvm-ar \
@@ -229,10 +274,68 @@ jobs:
             CLANG_TRIPLE="$CLANG_TRIPLE" \
             CROSS_COMPILE="$CROSS_COMPILE" \
             CROSS_COMPILE_ARM32="$CROSS_COMPILE_ARM32" \
-            Image.gz
+            vmlinux 2>&1 | tee build-vmlinux.log
+
+          echo ""
+          echo "======================================"
+          echo "Build ARM64 Image"
+          echo "======================================"
+
+          make \
+            -j2 \
+            O=out \
+            ARCH=arm64 \
+            LLVM=1 \
+            CC=clang \
+            LD=ld.lld \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip \
+            CLANG_TRIPLE="$CLANG_TRIPLE" \
+            CROSS_COMPILE="$CROSS_COMPILE" \
+            CROSS_COMPILE_ARM32="$CROSS_COMPILE_ARM32" \
+            Image 2>&1 | tee build-image.log
+
+          echo ""
+          echo "======================================"
+          echo "Create Image.gz"
+          echo "======================================"
+
+          if [ ! -f "out/arch/arm64/boot/Image" ]; then
+            echo "ERROR: Image was not generated!"
+            exit 1
+          fi
+
+          gzip -9 -c \
+            out/arch/arm64/boot/Image \
+            > out/arch/arm64/boot/Image.gz
+
+          echo ""
+          echo "======================================"
+          echo "Build Kernel Modules"
+          echo "======================================"
+
+          make \
+            -j2 \
+            O=out \
+            ARCH=arm64 \
+            LLVM=1 \
+            CC=clang \
+            LD=ld.lld \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip \
+            CLANG_TRIPLE="$CLANG_TRIPLE" \
+            CROSS_COMPILE="$CROSS_COMPILE" \
+            CROSS_COMPILE_ARM32="$CROSS_COMPILE_ARM32" \
+            modules 2>&1 | tee build-modules.log
 
       # ==========================================
-      # Verify Output
+      # Verify Build Output
       # ==========================================
       - name: Verify Build Output
         if: always()
@@ -243,26 +346,66 @@ jobs:
 
           ls -lah out/arch/arm64/boot/ 2>/dev/null || true
 
+          echo ""
+          echo "======================================"
+          echo "MemKernel Output"
+          echo "======================================"
+
+          find out -type f \
+            \( -name "*.ko" -o -name "fog_snipex_memk.ko" \) \
+            -print | sort || true
+
+          echo ""
+          echo "======================================"
+          echo "Image.gz Status"
+          echo "======================================"
+
           if [ -f "out/arch/arm64/boot/Image.gz" ]; then
-            echo ""
             echo "Image.gz BUILD SUCCESS"
             ls -lh out/arch/arm64/boot/Image.gz
             file out/arch/arm64/boot/Image.gz
           else
-            echo ""
             echo "Image.gz NOT FOUND"
           fi
 
+          echo ""
+          echo "======================================"
+          echo "Expected MemKernel Module"
+          echo "======================================"
+
+          if [ -f "out/drivers/memkernel/fog_snipex_memk.ko" ]; then
+            echo "fog_snipex_memk.ko BUILD SUCCESS"
+            ls -lh out/drivers/memkernel/fog_snipex_memk.ko
+            file out/drivers/memkernel/fog_snipex_memk.ko
+          else
+            echo "fog_snipex_memk.ko NOT FOUND AT EXPECTED PATH"
+          fi
+
       # ==========================================
-      # Upload Image.gz
+      # Upload Kernel + MemKernel
       # ==========================================
       - name: Upload Kernel
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: (final3)rystx_default_bore_test3-KSU
+          name: (final4)rystx_default_bore_test3-KSU
           path: |
             out/arch/arm64/boot/Image.gz
+            out/drivers/memkernel/fog_snipex_memk.ko
+          if-no-files-found: warn
+
+      # ==========================================
+      # Upload Build Logs
+      # ==========================================
+      - name: Upload Build Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: (final4_memk)rystx_default_bore-test3-build-logs
+          path: |
+            build-vmlinux.log
+            build-image.log
+            build-modules.log
           if-no-files-found: warn
 
       # ==========================================
@@ -272,7 +415,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: (final3_)rystx_default_bore-KSU-build-info
+          name: (final4_memk)rystx_default_bore-KSU-build-info
           path: |
             out/.config
             out/System.map
