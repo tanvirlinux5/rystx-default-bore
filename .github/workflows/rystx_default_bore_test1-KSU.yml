@@ -63,16 +63,22 @@ jobs:
 
           cd "$GITHUB_WORKSPACE/toolchains"
 
-          wget -q --show-progress \
-            "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r614150.tar.gz" \
-            -O clang-r614150.tar.gz
+          echo "Downloading AOSP Clang r614150..."
 
-          mkdir -p clang-r614150
+          git clone \
+            --depth=1 \
+            --filter=blob:none \
+            --sparse \
+            -b main-kernel \
+            https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86.git \
+            clang-r614150
 
-          tar -xzf clang-r614150.tar.gz \
-            -C clang-r614150
+          cd clang-r614150
 
-          rm -f clang-r614150.tar.gz
+          git sparse-checkout set clang-r614150
+
+          echo "Clang directory:"
+          ls -la clang-r614150
 
       # ==========================================
       # Setup AOSP Clang
@@ -81,7 +87,7 @@ jobs:
         run: |
           set -e
 
-          export CLANG_DIR="$GITHUB_WORKSPACE/toolchains/clang-r614150"
+          export CLANG_DIR="$GITHUB_WORKSPACE/toolchains/clang-r614150/clang-r614150"
 
           echo "CLANG_DIR=$CLANG_DIR" >> "$GITHUB_ENV"
           echo "$CLANG_DIR/bin" >> "$GITHUB_PATH"
