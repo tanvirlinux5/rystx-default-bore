@@ -1,0 +1,9 @@
+      - name: Find fog-stock_defconfig References
+        run: |
+          echo "Searching for fog-stock_defconfig references..."
+
+          grep -RIn \
+            --exclude-dir=.git \
+            "fog-stock_defconfig" \
+            . \
+            || true
