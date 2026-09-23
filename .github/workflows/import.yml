@@ -1,0 +1,82 @@
+name: Import Latest fog-r-oss
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: "GitLab source repository"
+        required: true
+        default: "https://github.com/rystX-OpenSource/rystx-kernel_xiaomi_sm6225"
+
+      target_branch:
+        description: "Source branch"
+        required: true
+        default: "rystx-default-bore"
+
+      dest_branch:
+        description: "GitHub destination branch"
+        required: true
+        default: "rystx-default-bore"
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout GitHub Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Import Latest Source
+        env:
+          SOURCE_REPO: ${{ inputs.source_repo }}
+          SOURCE_BRANCH: ${{ inputs.target_branch }}
+          DEST_BRANCH: ${{ inputs.dest_branch }}
+        run: |
+          set -e
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          echo "Downloading latest $SOURCE_BRANCH..."
+
+          git clone \
+            --depth=1 \
+            --single-branch \
+            --branch "$SOURCE_BRANCH" \
+            "$SOURCE_REPO" \
+            /tmp/source_repo
+
+          echo "Removing Git history..."
+
+          rm -rf /tmp/source_repo/.git
+
+          echo "Cleaning destination repository..."
+
+          find . -mindepth 1 -maxdepth 1 \
+            ! -name ".git" \
+            -exec rm -rf {} +
+
+          echo "Copying latest source..."
+
+          cp -a /tmp/source_repo/. ./
+
+          rm -rf /tmp/source_repo
+
+          echo "Creating clean commit..."
+
+          git checkout -B "$DEST_BRANCH"
+
+          git add -A
+
+          git commit \
+            -m "Import latest $SOURCE_BRANCH from GitLab" \
+            || echo "No changes to commit"
+
+          echo "Pushing to GitHub..."
+
+          git push origin "$DEST_BRANCH" --force
