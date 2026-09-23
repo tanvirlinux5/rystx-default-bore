@@ -1,4 +1,4 @@
-CONFIG_LOCALVERSION="fog-snipex@Violence333"
+CONFIG_LOCALVERSION="-fog-snipex@Violence333"
 # === rystX changes ===
 # KernelSU
 CONFIG_KSU=y
