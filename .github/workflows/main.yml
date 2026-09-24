@@ -1,53 +1,87 @@
-name: Find Module Files
+name: Scan PF_USED_ASYNC
 
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   scan:
-    name: Scan Module Related Files
+    name: Find PF_USED_ASYNC
     runs-on: ubuntu-22.04
 
     steps:
+
+      # ==========================================
+      # Checkout Kernel Source
+      # ==========================================
       - name: Checkout Kernel Source
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: Find Module Files
+      # ==========================================
+      # Search PF_USED_ASYNC - Full Tree
+      # ==========================================
+      - name: Search PF_USED_ASYNC - Full Tree
         run: |
-          echo "========================================"
-          echo " MODULE RELATED FILES"
-          echo "========================================"
+          echo "=========================================="
+          echo " PF_USED_ASYNC - FULL TREE SEARCH"
+          echo "=========================================="
 
           echo ""
-          echo "[1] Exact module.c files:"
-          find . -type f -name "module.c" -print | sort
+          echo "Command:"
+          echo 'grep -R -n "PF_USED_ASYNC" . --exclude-dir=.git 2>/dev/null || true'
 
           echo ""
-          echo "[2] Exact module_signing.c files:"
-          find . -type f -name "module_signing.c" -print | sort
+          echo "RESULT:"
+          grep -R -n "PF_USED_ASYNC" . \
+            --exclude-dir=.git \
+            2>/dev/null || true
+
+      # ==========================================
+      # Search PF_USED_ASYNC - include + kernel
+      # ==========================================
+      - name: Search PF_USED_ASYNC - include kernel
+        run: |
+          echo ""
+          echo "=========================================="
+          echo " PF_USED_ASYNC - INCLUDE + KERNEL"
+          echo "=========================================="
 
           echo ""
-          echo "[3] All files containing 'module' in filename:"
-          find . -type f -iname "*module*" -print | sort
+          echo "Command:"
+          echo 'grep -R -n "PF_USED_ASYNC" include kernel 2>/dev/null || true'
 
           echo ""
-          echo "========================================"
-          echo " FULL PATH + FILE SIZE"
-          echo "========================================"
+          echo "RESULT:"
+          grep -R -n "PF_USED_ASYNC" \
+            include kernel \
+            2>/dev/null || true
 
-          find . -type f \( \
-            -name "module.c" -o \
-            -name "module_signing.c" \
-            \) -print0 |
-          while IFS= read -r -d '' file; do
-            echo ""
-            echo "FILE: $file"
-            ls -lh "$file"
-          done
+      # ==========================================
+      # Search Related Async Flags
+      # ==========================================
+      - name: Search Related Async Definitions
+        run: |
+          echo ""
+          echo "=========================================="
+          echo " RELATED ASYNC / TASK FLAGS"
+          echo "=========================================="
 
           echo ""
-          echo "========================================"
-          echo " SEARCH COMPLETE"
-          echo "========================================"
+          echo "[1] USED_ASYNC:"
+          grep -R -n "USED_ASYNC" . \
+            --exclude-dir=.git \
+            2>/dev/null || true
+
+          echo ""
+          echo "[2] current_is_async:"
+          grep -R -n "current_is_async" . \
+            --exclude-dir=.git \
+            2>/dev/null || true
+
+          echo ""
+          echo "[3] async_worker:"
+          grep -
